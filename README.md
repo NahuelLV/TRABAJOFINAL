@@ -1,23 +1,23 @@
 # TRABAJO FINAL
 Juego IRONFALL
 
-Integrantes:
+Integrantes: 
 -Santino Giuffrida
 -Nahuel Linares
 -Matias Leanza
 
-Descripcion breve del juego:
+Descripcion breve del juego: 
 El juego trata de conquistar todo el continente de Feronis, derrotando a distintas facciones y consiguiendo mejoras a lo largo del juego.
 
-Tecnologias principales:
+Tecnologias principales: 
 -LIBGDX
 -Software TILERD
 
-Plataformas:
+Plataformas: 
 PC
 
 Wiki: https://github.com/NahuelLV/TRABAJOFINAL/wiki/Pagina-Principal
 
-Instrucciones Básicas de Compilación y Ejecución:
+Instrucciones Básicas de Compilación y Ejecución: -------------
 
 
