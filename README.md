@@ -16,7 +16,7 @@ Tecnologias principales:
 Plataformas:
 PC
 
-Wiki:
+Wiki: https://github.com/NahuelLV/TRABAJOFINAL/wiki/Pagina-Principal
 
 Instrucciones Básicas de Compilación y Ejecución:
 
