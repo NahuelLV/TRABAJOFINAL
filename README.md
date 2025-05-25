@@ -1,7 +1,7 @@
 # TRABAJO FINAL
 Juego IRONFALL
 
-Integrantes:
+Integrantes:\n
 Santino Giuffrida
 Nahuel Linares
 Matias Leanza
