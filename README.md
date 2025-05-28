@@ -18,6 +18,12 @@ Tecnologias principales y Plataformas:
 
 Wiki: https://github.com/NahuelLV/TRABAJOFINAL/wiki/Pagina-Principal
 
-Instrucciones Básicas de Compilación y Ejecución: -------------
+## 🚀 Instrucciones Básicas de Compilación y Ejecución
+
+### 1. Clonar el repositorio
+
+```bash
+git clone https://github.com/NahuelLV/TRABAJOFINAL.git
+cd TRABAJOFINAL
 
 
