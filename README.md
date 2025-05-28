@@ -1,4 +1,4 @@
-# TRABAJO FINAL
+# IRONFALL
 Juego IRONFALL
 
 Integrantes: 
@@ -9,12 +9,12 @@ Integrantes:
 Descripcion breve del juego: 
 El juego trata de conquistar todo el continente de Feronis, derrotando a distintas facciones y consiguiendo mejoras a lo largo del juego.
 
-Tecnologias principales: 
+Tecnologias principales y Plataformas: 
 -LIBGDX
 -Software TILERD
-
-Plataformas: 
-PC
+-lenguaje: Java
+-IDE: IntelliJ IDEA
+-PC (Windows)
 
 Wiki: https://github.com/NahuelLV/TRABAJOFINAL/wiki/Pagina-Principal
 
