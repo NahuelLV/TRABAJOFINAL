@@ -25,17 +25,34 @@ El juego trata de conquistar todo el continente de Feronis, derrotando a distint
 ```bash
 git clone https://github.com/NahuelLV/TRABAJOFINAL.git
 cd TRABAJOFINAL
-### 2. Requisitos previos
-  -Java JDK 8 o superior (recomendado: JDK 11)
+2. Requisitos previos
+Java JDK 8 o superior (recomendado: JDK 11)
 
-  -Gradle instalado (opcional, el wrapper viene incluido)
+Gradle (opcional, se incluye el wrapper)
 
-  -Eclipse, IntelliJ o editor de texto + terminal
-### 3. Compilar el proyecto
-```bash
+Eclipse, IntelliJ IDEA o cualquier editor con terminal
+
+3. Compilar el proyecto
+En Windows
+bash
+Copiar
+Editar
 gradlew.bat desktop:build
-### 4. Ejecutar el juego
-```bash
+En Linux / macOS
+bash
+Copiar
+Editar
+./gradlew desktop:build
+4. Ejecutar el juego
+En Windows
+bash
+Copiar
+Editar
 gradlew.bat desktop:run
+En Linux / macOS
+bash
+Copiar
+Editar
+./gradlew desktop:run
 
 
