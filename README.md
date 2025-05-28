@@ -16,7 +16,7 @@ El juego trata de conquistar todo el continente de Feronis, derrotando a distint
 -IDE: IntelliJ IDEA
 -PC (Windows)
 
-## Wiki: https://github.com/NahuelLV/TRABAJOFINAL/wiki/Pagina-Principal
+## Wiki: [pagina de la WIKI](https://github.com/NahuelLV/TRABAJOFINAL/wiki)
 
 ## 🚀 Instrucciones Básicas de Compilación y Ejecución
 
