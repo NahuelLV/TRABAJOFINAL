@@ -1,6 +1,6 @@
 # IRONFALL
 
-##Estado del desarrollo:
+## Estado de desarrollo:
 
 En proceso de la primera etapa(planificacion, creacion de los primeros archivos y del github, asignacion de roles y futuras tareas).
 
