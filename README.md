@@ -29,7 +29,7 @@ El juego trata de conquistar todo el continente de Feronis, derrotando a distint
 
 ## Wiki: [pagina de la WIKI](https://github.com/NahuelLV/TRABAJOFINAL/wiki)
 
-## 🚀 Instrucciones Básicas de Compilación y Ejecución
+##  Instrucciones Básicas de Compilación y Ejecución
 
 ### 1. Clonar el repositorio
 
@@ -56,10 +56,10 @@ En Windows
 gradlew.bat desktop:run
 ```
 
-###Instrucciones adicionales
+### Instrucciones adicionales
 
-####Ejecutar desde un entorno de desarrollo (IDE)
-#####IntelliJ IDEA
+#### Ejecutar desde un entorno de desarrollo (IDE)
+##### IntelliJ IDEA
 
 1. Abrí IntelliJ IDEA.
 
@@ -71,7 +71,7 @@ gradlew.bat desktop:run
 
 5. Hacé clic derecho sobre la clase y seleccioná Run 'Lwjgl3Launcher.main()'.
 
-#####Eclipse
+##### Eclipse
 
 1. Abrí Eclipse.
 
@@ -81,7 +81,7 @@ gradlew.bat desktop:run
 
 4. Una vez importado, buscá Lwjgl3Launcher.java y ejecutalo como aplicación Java (Run As > Java Application).
 
-###Comandos para Linux/macOS
+### Comandos para Linux/macOS
 Todos los comandos que usan gradlew.bat en Windows, deben ejecutarse así en sistemas Unix (Linux/macOS):
 
 -Compilar el proyecto
