@@ -1,96 +1,33 @@
-# IRONFALL
+# Ironfall
 
-## Estado de desarrollo:
+A [libGDX](https://libgdx.com/) project generated with [gdx-liftoff](https://github.com/libgdx/gdx-liftoff).
 
-En proceso de la primera etapa(planificacion, creacion de los primeros archivos y del github, asignacion de roles y futuras tareas).
+This project was generated with a template including simple application launchers and an `ApplicationAdapter` extension that draws libGDX logo.
 
-## Integrantes: 
+## Platforms
 
--Santino Giuffrida
+- `core`: Main module with the application logic shared by all platforms.
+- `lwjgl3`: Primary desktop platform using LWJGL3; was called 'desktop' in older docs.
 
--Nahuel Linares
+## Gradle
 
--Matias Leanza
+This project uses [Gradle](https://gradle.org/) to manage dependencies.
+The Gradle wrapper was included, so you can run Gradle tasks using `gradlew.bat` or `./gradlew` commands.
+Useful Gradle tasks and flags:
 
-## Descripcion breve del juego: 
-El juego trata de conquistar todo el continente de Feronis, derrotando a distintas facciones y consiguiendo mejoras a lo largo del juego.
+- `--continue`: when using this flag, errors will not stop the tasks from running.
+- `--daemon`: thanks to this flag, Gradle daemon will be used to run chosen tasks.
+- `--offline`: when using this flag, cached dependency archives will be used.
+- `--refresh-dependencies`: this flag forces validation of all dependencies. Useful for snapshot versions.
+- `build`: builds sources and archives of every project.
+- `cleanEclipse`: removes Eclipse project data.
+- `cleanIdea`: removes IntelliJ project data.
+- `clean`: removes `build` folders, which store compiled classes and built archives.
+- `eclipse`: generates Eclipse project data.
+- `idea`: generates IntelliJ project data.
+- `lwjgl3:jar`: builds application's runnable jar, which can be found at `lwjgl3/build/libs`.
+- `lwjgl3:run`: starts the application.
+- `test`: runs unit tests (if any).
 
-## Tecnologias principales y Plataformas: 
-
--LIBGDX
-
--Software TILERD
-
--lenguaje: Java
-
--IDE: IntelliJ IDEA
-
--PC (Windows)
-
-## Wiki: [pagina de la WIKI](https://github.com/NahuelLV/TRABAJOFINAL/wiki)
-
-##  Instrucciones Básicas de Compilación y Ejecución
-
-### 1. Clonar el repositorio
-
-```bash
-git clone https://github.com/NahuelLV/TRABAJOFINAL.git
-cd TRABAJOFINAL
-```
-
-### 2. Requisitos previos
-Java JDK 8 o superior (recomendado: JDK 11)
-
-Gradle (opcional, se incluye el wrapper)
-
-Eclipse, IntelliJ IDEA o cualquier editor con terminal
-
-### 3. Compilar el proyecto
-En Windows
-```bash
-gradlew.bat desktop:build
-```
-### 4. Ejecutar el juego
-En Windows
-```bash
-gradlew.bat desktop:run
-```
-
-### Instrucciones adicionales
-
-#### Ejecutar desde un entorno de desarrollo (IDE)
-##### IntelliJ IDEA
-
-1. Abrí IntelliJ IDEA.
-
-2. Seleccioná la opción "Open" y elegí la carpeta raíz del proyecto (TRABAJOFINAL).
-
-3. IntelliJ reconocerá el proyecto como Gradle y lo configurará automáticamente.
-
-4. Una vez cargado, buscá la clase Lwjgl3Launcher.java dentro del módulo lwjgl3 o desktop.
-
-5. Hacé clic derecho sobre la clase y seleccioná Run 'Lwjgl3Launcher.main()'.
-
-##### Eclipse
-
-1. Abrí Eclipse.
-
-2. Seleccioná File > Import > Gradle > Existing Gradle Project.
-
-3. Navegá hasta la carpeta del proyecto (TRABAJOFINAL) y completá la importación.
-
-4. Una vez importado, buscá Lwjgl3Launcher.java y ejecutalo como aplicación Java (Run As > Java Application).
-
-### Comandos para Linux/macOS
-Todos los comandos que usan gradlew.bat en Windows, deben ejecutarse así en sistemas Unix (Linux/macOS):
-
--Compilar el proyecto
-```bash
-./gradlew desktop:build
-```
--Ejecutar el juego
-```bash
-./gradlew desktop:run
-```
-
-
+Note that most tasks that are not specific to a single project can be run with `name:` prefix, where the `name` should be replaced with the ID of a specific project.
+For example, `core:clean` removes `build` folder only from the `core` project.
