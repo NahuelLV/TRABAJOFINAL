@@ -13,8 +13,6 @@ import com.badlogic.gdx.utils.viewport.ScreenViewport;
 
 import pro.juego.Ironfall.Ironfalljuego;
 
-
-
 public class MenuPrincipal implements Screen {
 
     private Ironfalljuego juego;
@@ -29,7 +27,7 @@ public class MenuPrincipal implements Screen {
 
     @Override
     public void show() {
-        skin = new Skin(Gdx.files.internal("uiskin.json")); // skin predeterminado
+        skin = new Skin(Gdx.files.internal("uiskin.json"));
 
         Table table = new Table();
         table.setFillParent(true);
@@ -39,15 +37,13 @@ public class MenuPrincipal implements Screen {
         TextButton btnMultijugador = new TextButton("Multijugador", skin);
         TextButton btnSalir = new TextButton("Salir", skin);
 
-        // Listener para "Un Jugador"
         btnUnJugador.addListener(new ClickListener() {
             @Override
             public void clicked(InputEvent event, float x, float y) {
-                juego.setScreen(new PantallaJuego(juego)); // Ir a juego
+                juego.setScreen(new PantallaJuego(juego));
             }
         });
 
-        // Listener para "Multijugador" (todavía sin implementación)
         btnMultijugador.addListener(new ClickListener() {
             @Override
             public void clicked(InputEvent event, float x, float y) {
@@ -55,7 +51,6 @@ public class MenuPrincipal implements Screen {
             }
         });
 
-        // Listener para "Salir"
         btnSalir.addListener(new ClickListener() {
             @Override
             public void clicked(InputEvent event, float x, float y) {
