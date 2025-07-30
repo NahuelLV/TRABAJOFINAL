@@ -14,9 +14,12 @@ import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.math.Vector3;
 import com.badlogic.gdx.utils.Array;
-
+import java.util.List;
+import java.util.ArrayList;
 import pro.juego.Ironfall.Ironfalljuego;
 import pro.juego.Ironfall.entidades.Unidad;
+import pro.juego.Ironfall.pathfinding.Nodo;
+import pro.juego.Ironfall.pathfinding.Pathfinding;
 
 public class PantallaJuego implements Screen, InputProcessor {
 
@@ -24,21 +27,53 @@ public class PantallaJuego implements Screen, InputProcessor {
     private SpriteBatch batch;
     private OrthographicCamera camara;
     private ShapeRenderer shapeRenderer;
-    
     private Array<Unidad> unidades;
     private boolean seleccionando = false;
     private Vector2 inicioSeleccion;
     private Vector2 finSeleccion;
+    private final int TAMANIO_DEL_TILE = 30;
     private final int ANCHO_DEL_MAPA = 3840;
+    private final int ALTO_DEL_MAPA = 720;
+    private final int CELDA_TAM = 40;
+    private final int ANCHO_CELDAS = 96; // 3840 / 40
+    private final int ALTO_CELDAS = 18;  // 720 / 40
+    private int[][] mapa = new int[ANCHO_CELDAS][ALTO_CELDAS];
+    private Nodo[][] grillaNodos;
+    private Pathfinding pathfinding;
+    
     public PantallaJuego(Ironfalljuego juego) {
         this.juego = juego;
         this.batch = juego.batch;
     }
 
+    private void inicializarGrilla() {
+        int ancho = mapa.length;
+        int alto = mapa[0].length;
+        grillaNodos = new Nodo[ancho][alto];
+
+        for (int x = 0; x < ancho; x++) {
+            for (int y = 0; y < alto; y++) {
+                boolean accesible = (mapa[x][y] == 0);
+                grillaNodos[x][y] = new Nodo(x, y, accesible);
+            }
+        }
+
+        pathfinding = new Pathfinding(grillaNodos);
+    }
+    
+    private Nodo convertirAPosicionCelda(Vector2 posicion) {
+        int x = (int)(posicion.x / 40); // 40 = tamaño de celda
+        int y = (int)(posicion.y / 40);
+        if (x >= 0 && x < grillaNodos.length && y >= 0 && y < grillaNodos[0].length) {
+            return grillaNodos[x][y];
+        }
+        return null;
+    }
+    
     @Override
     public void show() {
         camara = new OrthographicCamera();
-        camara.setToOrtho(false, ANCHO_DEL_MAPA, 720);
+        camara.setToOrtho(false, ANCHO_DEL_MAPA, ALTO_DEL_MAPA);
         camara.position.set(640,360,0);
         camara.update();
         shapeRenderer = new ShapeRenderer();
@@ -49,6 +84,7 @@ public class PantallaJuego implements Screen, InputProcessor {
         }
 
         Gdx.input.setInputProcessor(this);
+        inicializarGrilla();
     }
 
     @Override
@@ -81,8 +117,10 @@ public class PantallaJuego implements Screen, InputProcessor {
         int mouseX = Gdx.input.getX();
         int borde = 20;
         float velocidad = 300;
-    	for (Unidad u : unidades) {
-            u.update(delta);
+        List<Unidad> listaUnidades = new ArrayList<>();
+        for (Unidad u : unidades) {
+            u.update(delta, listaUnidades);
+            listaUnidades.add(u);
         }
     	if (mouseX < borde) {
     	    camara.position.x -= velocidad * delta;
@@ -114,12 +152,17 @@ public class PantallaJuego implements Screen, InputProcessor {
     	return this.ANCHO_DEL_MAPA;
     } 
     
+    public int getAltoDelMapa() {
+    	return this.ALTO_DEL_MAPA;
+    }
+    
     
     @Override
     public boolean touchDown(int screenX, int screenY, int pointer, int button) {
         Vector3 clic = camara.unproject(new Vector3(screenX, screenY, 0));
         Vector2 clicMundo = new Vector2(clic.x, clic.y);
-
+        float espacio = 40f;
+        
         if (button == Input.Buttons.LEFT) {
             seleccionando = true;
             inicioSeleccion = clicMundo.cpy();
@@ -134,15 +177,23 @@ public class PantallaJuego implements Screen, InputProcessor {
             }
 
             if (seleccionadas.size > 0) {
-                float radio = 40f;
-                float anguloPaso = 360f / seleccionadas.size;
+                
+              
 
                 for (int i = 0; i < seleccionadas.size; i++) {
-                    float angulo = i * anguloPaso;
-                    float offsetX = (float)Math.cos(Math.toRadians(angulo)) * radio;
-                    float offsetY = (float)Math.sin(Math.toRadians(angulo)) * radio;
+                    float offsetX = 0;
+                    float offsetY = (i - seleccionadas.size / 2f) * espacio;
                     Vector2 destino = new Vector2(clicMundo.x + offsetX, clicMundo.y + offsetY);
-                    seleccionadas.get(i).setDestino(destino);
+
+                    Unidad unidad = seleccionadas.get(i);
+                    Nodo inicio = convertirAPosicionCelda(unidad.getCentro());
+                    Nodo fin = convertirAPosicionCelda(destino);
+
+                    if (inicio != null && fin != null) {
+                    	List<Nodo> crudo = pathfinding.encontrarCamino(inicio, fin);
+                    	List<Nodo> suavizado = pathfinding.suavizarCamino(crudo);
+                    	unidad.setPath(suavizado);
+                    }
                 }
             }
         }

@@ -6,24 +6,31 @@ import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.math.Vector2;
-
+import java.util.List;
+import com.badlogic.gdx.math.Vector2;
+import pro.juego.Ironfall.pathfinding.Nodo;
 
 public class Unidad {
-    private Texture textura;
-    private Vector2 posicion;
-    private Vector2 destino;
-    private float velocidad = 150;
-    private boolean seleccionada = false;
-    private  float LIMITE_IZQUIERDO = 0;
-	private  float LIMITE_DERECHO;
-	private  float LIMITE_SUPERIOR = 0;
-	private  float LIMITE_INFERIOR;
-	private  float escala = 0.1f;
+	  private Texture textura;
+	    private Vector2 posicion;
+	    private float escala = 0.1f;
+
+	    private boolean seleccionada = false;
+
+	    private float LIMITE_IZQUIERDO = 0;
+	    private float LIMITE_DERECHO;
+	    private float LIMITE_SUPERIOR = 0;
+	    private float LIMITE_INFERIOR;
+
+	    // Pathfinding
+	    private List<Nodo> path;
+	    private int indiceActual = 0;
+	    private float velocidad = 100f;
 	
 	public Unidad(String ruta, float x, float y, float anchoMapa) {
         textura = new Texture(ruta);
         posicion = new Vector2(x, y);
-        destino = new Vector2(x, y);
+       
 
         
         float ancho = textura.getWidth() * escala;
@@ -54,33 +61,50 @@ public class Unidad {
         }
     }
 
-    public void update(float delta) {
+    public void update(float delta, List<Unidad> todasLasUnidades) {
+    	float radioSeparacion = 25f;
+    	float fuerzaSeparacion = 50f;
     	
-        if (!posicion.epsilonEquals(destino, 1f)) {
-            Vector2 dir = destino.cpy().sub(posicion).nor();
-            posicion.add(dir.scl(velocidad * delta));
+    	if (path != null && indiceActual < path.size()) {
+            Nodo objetivo = path.get(indiceActual);
+            Vector2 destino = new Vector2(objetivo.x * 40, objetivo.y * 40);
+            Vector2 direccion = destino.cpy().sub(posicion);
+            float distancia =  direccion.len();
+
+            if (distancia < 2f) {
+                indiceActual++;
+            }else {
+            		direccion.nor();
+            		Vector2 nuevoMovimiento = direccion.scl(velocidad * delta);
+            		
+            		if(!hayColision(posicion.cpy().add(nuevoMovimiento), todasLasUnidades)) {
+            			posicion.add(nuevoMovimiento);
+            		}
+            }
+            	
+              
         }
-        posicion.x = MathUtils.clamp(posicion.x, LIMITE_IZQUIERDO, LIMITE_DERECHO);
-        posicion.y = MathUtils.clamp(posicion.y, LIMITE_INFERIOR, LIMITE_SUPERIOR);
-        
+    	for (Unidad otra : todasLasUnidades) {
+    	    if (otra != this && this.posicion.dst(otra.posicion) < radioSeparacion) {
+    	        Vector2 repulsion = this.posicion.cpy().sub(otra.posicion).nor().scl(fuerzaSeparacion * delta);
+    	        posicion.add(repulsion);
+    	    }
+    	}
+    }
+    private boolean hayColision(Vector2 nuevaPos, List<Unidad> otras) {
+        float radio = 20; // radio de colisión
+        for (Unidad u : otras) {
+            if (u == this) continue;
+            if (u.posicion.dst(nuevaPos) < radio) {
+                return true;
+            }
+        }
+        return false;
     }
 
-    public boolean fueClickeado(float x, float y) {
-        this.escala = 0.1f;
-        return x >= posicion.x && x <= posicion.x + textura.getWidth() * escala
-            && y >= posicion.y && y <= posicion.y + textura.getHeight() * escala;
-    }
-
-    public Vector2 getCentro() {
-         this.escala = 0.1f;
-        return new Vector2(
-            posicion.x + textura.getWidth() * escala / 2,
-            posicion.y + textura.getHeight() * escala / 2
-        );
-    }
-
-    public void setDestino(Vector2 destino) {
-        this.destino = destino;
+    public void setPath(List<Nodo> path) {
+        this.path = path;
+        this.indiceActual = 0;
     }
 
     public void setSeleccionada(boolean seleccionada) {
@@ -89,5 +113,37 @@ public class Unidad {
 
     public boolean estaSeleccionada() {
         return seleccionada;
+    }
+
+    public boolean fueClickeado(float x, float y) {
+        return x >= posicion.x && x <= posicion.x + getAncho()
+            && y >= posicion.y && y <= posicion.y + getAlto();
+    }
+
+    public Vector2 getCentro() {
+        return new Vector2(
+            posicion.x + getAncho() / 2,
+            posicion.y + getAlto() / 2
+        );
+    }
+
+    public float getAncho() {
+        return textura.getWidth() * escala;
+    }
+
+    public float getAlto() {
+        return textura.getHeight() * escala;
+    }
+
+    public float getX() {
+        return posicion.x;
+    }
+
+    public float getY() {
+        return posicion.y;
+    }
+
+    public void setPosicion(float x, float y) {
+        posicion.set(x, y);
     }
 }
