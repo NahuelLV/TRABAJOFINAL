@@ -14,14 +14,11 @@ public class Unidad {
 	  private Texture textura;
 	    private Vector2 posicion;
 	    private float escala = 0.1f;
-
 	    private boolean seleccionada = false;
-
 	    private float LIMITE_IZQUIERDO = 0;
 	    private float LIMITE_DERECHO;
 	    private float LIMITE_SUPERIOR = 0;
 	    private float LIMITE_INFERIOR;
-
 	    // Pathfinding
 	    private List<Nodo> path;
 	    private int indiceActual = 0;
@@ -38,8 +35,8 @@ public class Unidad {
 
         
         LIMITE_DERECHO = anchoMapa - ancho;
-        LIMITE_SUPERIOR = 720 - alto;
-        LIMITE_INFERIOR = 0;
+        LIMITE_SUPERIOR = 256 - alto;
+        LIMITE_INFERIOR = -175;
     }
 
     public void render(SpriteBatch batch) {

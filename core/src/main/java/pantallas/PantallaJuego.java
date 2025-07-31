@@ -1,5 +1,8 @@
 package pantallas;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Input;
 import com.badlogic.gdx.InputProcessor;
@@ -7,6 +10,7 @@ import com.badlogic.gdx.Screen;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.OrthographicCamera;
+import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.math.MathUtils;
@@ -14,9 +18,9 @@ import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.math.Vector3;
 import com.badlogic.gdx.utils.Array;
-import java.util.List;
-import java.util.ArrayList;
+
 import pro.juego.Ironfall.Ironfalljuego;
+import pro.juego.Ironfall.entidades.Estatua;
 import pro.juego.Ironfall.entidades.Unidad;
 import pro.juego.Ironfall.pathfinding.Nodo;
 import pro.juego.Ironfall.pathfinding.Pathfinding;
@@ -28,13 +32,13 @@ public class PantallaJuego implements Screen, InputProcessor {
     private OrthographicCamera camara;
     private ShapeRenderer shapeRenderer;
     private Array<Unidad> unidades;
+    private Estatua estatuaJugador;
+    private Texture fondo;
     private boolean seleccionando = false;
     private Vector2 inicioSeleccion;
     private Vector2 finSeleccion;
-    private final int TAMANIO_DEL_TILE = 30;
     private final int ANCHO_DEL_MAPA = 3840;
     private final int ALTO_DEL_MAPA = 720;
-    private final int CELDA_TAM = 40;
     private final int ANCHO_CELDAS = 96; // 3840 / 40
     private final int ALTO_CELDAS = 18;  // 720 / 40
     private int[][] mapa = new int[ANCHO_CELDAS][ALTO_CELDAS];
@@ -84,6 +88,11 @@ public class PantallaJuego implements Screen, InputProcessor {
         }
 
         Gdx.input.setInputProcessor(this);
+        estatuaJugador = new Estatua("estatua1.png", 100, 100);
+        
+        fondo = new Texture("fondo.png");
+        fondo.setWrap(Texture.TextureWrap.Repeat, Texture.TextureWrap.Repeat);
+        
         inicializarGrilla();
     }
 
@@ -96,13 +105,33 @@ public class PantallaJuego implements Screen, InputProcessor {
 
         camara.update();
         batch.setProjectionMatrix(camara.combined);
-
         batch.begin();
+
+        // Fondo en mosaico
+        int fondoAncho = fondo.getWidth();
+        int fondoAlto = fondo.getHeight();
+        int cantidadTiles = (int) Math.ceil(ANCHO_DEL_MAPA / (float) fondoAncho);
+        for (int i = 0; i < cantidadTiles; i++) {
+            batch.draw(fondo, i * fondoAncho, -200, fondoAncho, fondoAlto);
+        }
+
+        // Unidades
         for (Unidad u : unidades) {
             u.render(batch);
         }
+
+        // Estatua del jugador
+        estatuaJugador.render(batch);
+
         batch.end();
 
+        // Barra de vida de la estatua
+        shapeRenderer.setProjectionMatrix(camara.combined);
+        shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
+        estatuaJugador.renderBarraVida(shapeRenderer);
+        shapeRenderer.end();
+
+        // Rectángulo de selección si corresponde
         if (seleccionando) {
             shapeRenderer.setProjectionMatrix(camara.combined);
             shapeRenderer.begin(ShapeRenderer.ShapeType.Line);
@@ -110,6 +139,12 @@ public class PantallaJuego implements Screen, InputProcessor {
             Rectangle rect = crearRectanguloSeleccion();
             shapeRenderer.rect(rect.x, rect.y, rect.width, rect.height);
             shapeRenderer.end();
+        }
+
+        // Estado de derrota
+        if (estatuaJugador.estaDestruida()) {
+            System.out.println("¡DERROTA! La estatua fue destruida.");
+            // Aquí podrías cambiar a pantalla de derrota en el futuro
         }
     }
 
@@ -162,11 +197,29 @@ public class PantallaJuego implements Screen, InputProcessor {
         Vector3 clic = camara.unproject(new Vector3(screenX, screenY, 0));
         Vector2 clicMundo = new Vector2(clic.x, clic.y);
         float espacio = 40f;
-        
+
         if (button == Input.Buttons.LEFT) {
-            seleccionando = true;
-            inicioSeleccion = clicMundo.cpy();
-            finSeleccion = clicMundo.cpy();
+            
+            boolean clickeoUnidad = false;
+            for (Unidad u : unidades) {
+                if (u.fueClickeado(clicMundo.x, clicMundo.y)) {
+                    // Deselecciona todas
+                    for (Unidad otra : unidades) {
+                        otra.setSeleccionada(false);
+                    }
+                    // Selecciona solo esta
+                    u.setSeleccionada(true);
+                    clickeoUnidad = true;
+                    break;
+                }
+            }
+
+            //  Si no tocó ninguna unidad, inicia selección múltiple
+            if (!clickeoUnidad) {
+                seleccionando = true;
+                inicioSeleccion = clicMundo.cpy();
+                finSeleccion = clicMundo.cpy();
+            }
 
         } else if (button == Input.Buttons.RIGHT) {
             Array<Unidad> seleccionadas = new Array<>();
@@ -177,9 +230,6 @@ public class PantallaJuego implements Screen, InputProcessor {
             }
 
             if (seleccionadas.size > 0) {
-                
-              
-
                 for (int i = 0; i < seleccionadas.size; i++) {
                     float offsetX = 0;
                     float offsetY = (i - seleccionadas.size / 2f) * espacio;
@@ -190,13 +240,14 @@ public class PantallaJuego implements Screen, InputProcessor {
                     Nodo fin = convertirAPosicionCelda(destino);
 
                     if (inicio != null && fin != null) {
-                    	List<Nodo> crudo = pathfinding.encontrarCamino(inicio, fin);
-                    	List<Nodo> suavizado = pathfinding.suavizarCamino(crudo);
-                    	unidad.setPath(suavizado);
+                        List<Nodo> crudo = pathfinding.encontrarCamino(inicio, fin);
+                        List<Nodo> suavizado = pathfinding.suavizarCamino(crudo);
+                        unidad.setPath(suavizado);
                     }
                 }
             }
         }
+
         return true;
     }
 
