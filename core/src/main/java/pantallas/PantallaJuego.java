@@ -229,7 +229,7 @@ public class PantallaJuego implements Screen, InputProcessor {
             for (Unidad enemigo : enemigos) {
                 if (enemigo.fueClickeado(clicMundo.x, clicMundo.y)) {
                     for (Unidad aliada : seleccionadas) {
-                        aliada.setObjetivo(enemigo);
+                        aliada.setObjetivo(enemigo, pathfinding);
                     }
                     clickeoEnemigo = true;
                     break;

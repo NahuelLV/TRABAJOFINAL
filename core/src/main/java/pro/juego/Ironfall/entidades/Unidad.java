@@ -4,10 +4,10 @@ import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
-import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.math.Vector2;
 import java.util.List;
 import pro.juego.Ironfall.pathfinding.Nodo;
+import pro.juego.Ironfall.pathfinding.Pathfinding;
 
 public class Unidad {
     private Texture textura;
@@ -26,7 +26,7 @@ public class Unidad {
     private float rangoAtaque = 50f;
     private float tiempoEntreAtaques = 1f;
     private float tiempoDesdeUltimoAtaque = 0f;
-    private boolean viva = true;
+    public boolean viva = true;
     private int equipo;
 
     private Unidad objetivoDirecto = null;
@@ -44,6 +44,8 @@ public class Unidad {
     }
 
     public void render(SpriteBatch batch) {
+        if (!viva) return;
+
         batch.draw(textura, posicion.x, posicion.y,
                 textura.getWidth() * escala, textura.getHeight() * escala);
 
@@ -66,7 +68,7 @@ public class Unidad {
 
         tiempoDesdeUltimoAtaque += delta;
 
-        // Movimiento por pathfinding
+        // 1️⃣ Movimiento por path manual
         if (path != null && indiceActual < path.size()) {
             Nodo objetivo = path.get(indiceActual);
             Vector2 destino = new Vector2(objetivo.x * 40, objetivo.y * 40);
@@ -80,11 +82,25 @@ public class Unidad {
                 posicion.add(direccion.scl(velocidad * delta));
             }
         }
+        // 2️⃣ Movimiento hacia objetivo directo
+        else if (objetivoDirecto != null && objetivoDirecto.viva) {
+            Vector2 destino = objetivoDirecto.getCentro();
+            Vector2 direccion = destino.cpy().sub(posicion);
+            float distancia = direccion.len();
 
-        // Si no tiene path o ya llegó al final, intenta atacar
-        if (path == null || indiceActual >= path.size()) {
+            if (distancia > rangoAtaque) { // moverse hasta estar en rango
+                direccion.nor();
+                posicion.add(direccion.scl(velocidad * delta));
+            } else if (tiempoDesdeUltimoAtaque >= tiempoEntreAtaques) {
+                // atacar si está en rango
+                objetivoDirecto.recibirDanio(danio);
+                tiempoDesdeUltimoAtaque = 0f;
+            }
+        } 
+        // 3️⃣ Ataque automático solo si está quieta y sin objetivo
+        else {
             Unidad enemigoCercano = buscarEnemigoEnRango(enemigos);
-            if (enemigoCercano != null) {
+            if (enemigoCercano != null && tiempoDesdeUltimoAtaque >= tiempoEntreAtaques) {
                 atacar(enemigoCercano);
             } else {
                 // Atacar torre si está en rango
@@ -97,25 +113,6 @@ public class Unidad {
         }
     }
 
-   // private void atacarUnidadCercana(List<Unidad> enemigos) {
-     //   Unidad objetivoMasCercano = null;
-       // float distanciaMinima = Float.MAX_VALUE;
-
-        //for (Unidad otra : enemigos) {
-         //   if (!otra.viva) continue;
-
-          //  float distancia = this.getCentro().dst(otra.getCentro());
-           // if (distancia <= rangoAtaque && distancia < distanciaMinima) {
-             //   distanciaMinima = distancia;
-               // objetivoMasCercano = otra;
-           // }
-       // }
-
-        //if (objetivoMasCercano != null && tiempoDesdeUltimoAtaque >= tiempoEntreAtaques) {
-         //   objetivoMasCercano.recibirDanio(this.danio);
-          //  tiempoDesdeUltimoAtaque = 0f;
-      //  }
-   // }
     private Unidad buscarEnemigoEnRango(List<Unidad> enemigos) {
         Unidad masCercano = null;
         float menorDistancia = Float.MAX_VALUE;
@@ -132,13 +129,14 @@ public class Unidad {
 
         return masCercano;
     }
-    
+
     private void atacar(Unidad objetivo) {
         if (tiempoDesdeUltimoAtaque >= tiempoEntreAtaques) {
             objetivo.recibirDanio(danio);
             tiempoDesdeUltimoAtaque = 0f;
         }
     }
+
     public void recibirDanio(int cantidad) {
         vida -= cantidad;
         if (vida <= 0) {
@@ -147,16 +145,20 @@ public class Unidad {
         }
     }
 
-
-
     public void setPath(List<Nodo> path) {
         this.path = path;
         this.indiceActual = 0;
+        this.objetivoDirecto = null; // quitar objetivo directo si se da path manual
     }
 
-    public void setObjetivo(Unidad u) {
+    public void setObjetivo(Unidad u, Pathfinding pathfinding) {
         this.objetivoDirecto = u;
-        this.path = null;
+        Nodo inicio = convertirAPosicionCelda(getCentro());
+        Nodo fin = convertirAPosicionCelda(u.getCentro());
+        if (inicio != null && fin != null) {
+            this.path = pathfinding.suavizarCamino(pathfinding.encontrarCamino(inicio, fin));
+            this.indiceActual = 0;
+        }
     }
 
     public void setSeleccionada(boolean seleccionada) {
@@ -187,31 +189,23 @@ public class Unidad {
         return textura.getHeight() * escala;
     }
 
-    public float getX() {
-        return posicion.x;
-    }
+    public float getX() { return posicion.x; }
+    public float getY() { return posicion.y; }
 
-    public float getY() {
-        return posicion.y;
-    }
+    public void setVida(int vida) { this.vida = vida; }
+    public void setDaño(int danio) { this.danio = danio; }
+    public void setRangoAtaque(float rango) { this.rangoAtaque = rango; }
+    public void setTiempoEntreAtaques(float tiempo) { this.tiempoEntreAtaques = tiempo; }
 
-    public void setVida(int vida) {
-        this.vida = vida;
-    }
+    public int getEquipo() { return equipo; }
 
-    public void setDaño(int danio) {
-        this.danio = danio;
-    }
+    // Necesitás esto en PantallaJuego para eliminar muertas
+    public boolean estaViva() { return viva; }
 
-    public void setRangoAtaque(float rango) {
-        this.rangoAtaque = rango;
-    }
-
-    public void setTiempoEntreAtaques(float tiempo) {
-        this.tiempoEntreAtaques = tiempo;
-    }
-
-    public int getEquipo() {
-        return equipo;
+    // Convertir posición a nodo de la grilla (para pathfinding)
+    private Nodo convertirAPosicionCelda(Vector2 pos) {
+        int x = (int) (pos.x / 40);
+        int y = (int) (pos.y / 40);
+        return new Nodo(x, y, true); // el true lo podés ajustar según tu mapa
     }
 }
