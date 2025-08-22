@@ -1,4 +1,3 @@
-// PantallaJuego.java
 package pantallas;
 
 import java.util.ArrayList;
@@ -169,26 +168,25 @@ public class PantallaJuego implements Screen, InputProcessor {
             aliadosLista.add(u);
         }
 
+        // Actualización de aliados (modo neutral)
         for (Unidad aliada : aliados) {
             aliada.update(delta, enemigosLista, estatuaEnemiga);
         }
 
+        // Actualización de enemigos (IA que prioriza atacar unidades)
         for (Unidad enemiga : enemigos) {
-            enemiga.update(delta, aliadosLista, estatuaJugador);
+            enemiga.updateEnemigo(delta, aliadosLista, estatuaJugador);
         }
 
         // IA: crear unidad enemiga automática
         tiempoDesdeUltimaUnidadEnemiga += delta;
         if (tiempoDesdeUltimaUnidadEnemiga >= intervaloGeneracionEnemiga) {
             tiempoDesdeUltimaUnidadEnemiga = 0;
+
+            // Nuevo enemigo que se queda en su posición inicial
             Espadachin nuevo = new Espadachin(ANCHO_DEL_MAPA - 100, 200, ANCHO_DEL_MAPA, 1);
             enemigos.add(nuevo);
-            Nodo inicio = convertirAPosicionCelda(nuevo.getCentro());
-            Nodo fin = convertirAPosicionCelda(new Vector2(estatuaJugador.getX(), estatuaJugador.getY()));
-            if (inicio != null && fin != null) {
-                List<Nodo> camino = pathfinding.suavizarCamino(pathfinding.encontrarCamino(inicio, fin));
-                nuevo.setPath(camino);
-            }
+            // NO asignamos path hacia la torre
         }
     }
 

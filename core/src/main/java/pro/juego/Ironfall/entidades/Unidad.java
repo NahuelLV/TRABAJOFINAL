@@ -28,7 +28,7 @@ public class Unidad {
     private float tiempoDesdeUltimoAtaque = 0f;
     public boolean viva = true;
     private int equipo;
-
+    private float rangoDeteccion = 500f;
     private Unidad objetivoDirecto = null;
 
     public Unidad(String ruta, float x, float y, float anchoMapa, int equipo) {
@@ -63,15 +63,19 @@ public class Unidad {
         }
     }
 
+    // ========================
+    // Actualización de aliados (modo neutral)
+    // ========================
     public void update(float delta, List<Unidad> enemigos, Estatua torreEnemiga) {
         if (!viva) return;
-
         tiempoDesdeUltimoAtaque += delta;
 
-        // 1️⃣ Movimiento por path manual
-        if (path != null && indiceActual < path.size()) {
-            Nodo objetivo = path.get(indiceActual);
-            Vector2 destino = new Vector2(objetivo.x * 40, objetivo.y * 40);
+        boolean enMovimiento = (path != null && indiceActual < path.size());
+
+        // 1️⃣ Si está en movimiento por path, solo moverse
+        if (enMovimiento) {
+            Nodo objetivoNodo = path.get(indiceActual);
+            Vector2 destino = new Vector2(objetivoNodo.x * 40, objetivoNodo.y * 40);
             Vector2 direccion = destino.cpy().sub(posicion);
             float distancia = direccion.len();
 
@@ -81,38 +85,75 @@ public class Unidad {
                 direccion.nor();
                 posicion.add(direccion.scl(velocidad * delta));
             }
+            return; // no atacamos enemigos mientras hay path
         }
-        // 2️⃣ Movimiento hacia objetivo directo
-        else if (objetivoDirecto != null && objetivoDirecto.viva) {
-            Vector2 destino = objetivoDirecto.getCentro();
-            Vector2 direccion = destino.cpy().sub(posicion);
-            float distancia = direccion.len();
 
-            if (distancia > rangoAtaque) { // moverse hasta estar en rango
-                direccion.nor();
+        // 2️⃣ Si hay objetivo directo (clic derecho)
+        if (objetivoDirecto != null && objetivoDirecto.viva) {
+            float distancia = getCentro().dst(objetivoDirecto.getCentro());
+            if (distancia > rangoAtaque) {
+                Vector2 direccion = objetivoDirecto.getCentro().cpy().sub(posicion).nor();
                 posicion.add(direccion.scl(velocidad * delta));
-            } else if (tiempoDesdeUltimoAtaque >= tiempoEntreAtaques) {
-                // atacar si está en rango
-                objetivoDirecto.recibirDanio(danio);
-                tiempoDesdeUltimoAtaque = 0f;
-            }
-        } 
-        // 3️⃣ Ataque automático solo si está quieta y sin objetivo
-        else {
-            Unidad enemigoCercano = buscarEnemigoEnRango(enemigos);
-            if (enemigoCercano != null && tiempoDesdeUltimoAtaque >= tiempoEntreAtaques) {
-                atacar(enemigoCercano);
             } else {
-                // Atacar torre si está en rango
-                float distanciaATorre = getCentro().dst(torreEnemiga.getCentro());
-                if (distanciaATorre <= rangoAtaque && tiempoDesdeUltimoAtaque >= tiempoEntreAtaques) {
-                    torreEnemiga.recibirDanio(danio);
-                    tiempoDesdeUltimoAtaque = 0f;
-                }
+                atacar(objetivoDirecto);
             }
+            return;
+        }
+
+        // 3️⃣ Si está quieta, buscar enemigo cercano y atacar
+        Unidad enemigoCercano = buscarEnemigoEnRango(enemigos);
+        if (enemigoCercano != null) {
+            Vector2 direccion = enemigoCercano.getCentro().cpy().sub(posicion).nor();
+            posicion.add(direccion.scl(velocidad * delta));
+            atacar(enemigoCercano);
         }
     }
 
+    // ========================
+    // Actualización de enemigos (IA)
+    // ========================
+    public void updateEnemigo(float delta, List<Unidad> aliados, Estatua torreJugador) {
+        if (!viva) return;
+        tiempoDesdeUltimoAtaque += delta;
+
+        boolean enMovimiento = (path != null && indiceActual < path.size());
+
+        // 1️⃣ Prioridad: atacar unidades aliadas
+        Unidad aliadoCercano = buscarEnemigoEnRango(aliados);
+        if (aliadoCercano != null) {
+            // Seguir a la unidad aliada mientras esté viva
+            Vector2 direccion = aliadoCercano.getCentro().cpy().sub(posicion).nor();
+            posicion.add(direccion.scl(velocidad * delta));
+            atacar(aliadoCercano);
+            return; // mientras hay aliado en rango no se mueve a la torre
+        }
+
+        // 2️⃣ Si no hay aliados en rango, avanzar hacia la torre
+        if (enMovimiento) {
+            Nodo objetivoNodo = path.get(indiceActual);
+            Vector2 destino = new Vector2(objetivoNodo.x * 40, objetivoNodo.y * 40);
+            Vector2 direccion = destino.cpy().sub(posicion);
+            float distancia = direccion.len();
+
+            if (distancia < 2f) {
+                indiceActual++;
+            } else {
+                direccion.nor();
+                posicion.add(direccion.scl(velocidad * delta));
+            }
+            return;
+        }
+
+        // 3️⃣ Si no hay path hacia torre, atacar torre si está en rango
+        float distanciaTorre = getCentro().dst(torreJugador.getCentro());
+        if (distanciaTorre <= rangoAtaque) {
+            atacar(torreJugador);
+        }
+    }
+
+    // ========================
+    // Métodos auxiliares
+    // ========================
     private Unidad buscarEnemigoEnRango(List<Unidad> enemigos) {
         Unidad masCercano = null;
         float menorDistancia = Float.MAX_VALUE;
@@ -121,7 +162,7 @@ public class Unidad {
             if (!enemigo.viva) continue;
 
             float distancia = getCentro().dst(enemigo.getCentro());
-            if (distancia <= rangoAtaque && distancia < menorDistancia) {
+            if (distancia <= rangoDeteccion && distancia < menorDistancia) {
                 menorDistancia = distancia;
                 masCercano = enemigo;
             }
@@ -133,6 +174,13 @@ public class Unidad {
     private void atacar(Unidad objetivo) {
         if (tiempoDesdeUltimoAtaque >= tiempoEntreAtaques) {
             objetivo.recibirDanio(danio);
+            tiempoDesdeUltimoAtaque = 0f;
+        }
+    }
+
+    private void atacar(Estatua torre) {
+        if (tiempoDesdeUltimoAtaque >= tiempoEntreAtaques) {
+            torre.recibirDanio(danio);
             tiempoDesdeUltimoAtaque = 0f;
         }
     }
@@ -175,10 +223,7 @@ public class Unidad {
     }
 
     public Vector2 getCentro() {
-        return new Vector2(
-                posicion.x + getAncho() / 2,
-                posicion.y + getAlto() / 2
-        );
+        return new Vector2(posicion.x + getAncho() / 2, posicion.y + getAlto() / 2);
     }
 
     public float getAncho() {
@@ -198,14 +243,11 @@ public class Unidad {
     public void setTiempoEntreAtaques(float tiempo) { this.tiempoEntreAtaques = tiempo; }
 
     public int getEquipo() { return equipo; }
-
-    // Necesitás esto en PantallaJuego para eliminar muertas
     public boolean estaViva() { return viva; }
 
-    // Convertir posición a nodo de la grilla (para pathfinding)
     private Nodo convertirAPosicionCelda(Vector2 pos) {
         int x = (int) (pos.x / 40);
         int y = (int) (pos.y / 40);
-        return new Nodo(x, y, true); // el true lo podés ajustar según tu mapa
+        return new Nodo(x, y, true);
     }
 }
