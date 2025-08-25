@@ -2,7 +2,7 @@
 
 ## Estado de desarrollo:
 
-En proceso de la primera etapa(planificacion, creacion de los primeros archivos y del github, asignacion de roles y futuras tareas).
+En proceso de la segunda etapa(creacion de funciones y parte logica del juego, comienzo de parte grafica, modelos de unidades, estructuras y mapa).
 
 ## Integrantes: 
 
