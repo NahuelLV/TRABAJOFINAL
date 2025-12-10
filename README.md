@@ -1,4 +1,4 @@
-# IRONFALL
+# MirageWar
 
 ## Estado de desarrollo:
 
@@ -10,7 +10,6 @@ En proceso de la segunda etapa(creacion de funciones y parte logica del juego, c
 
 -Nahuel Linares
 
--Matias Leanza
 
 ## Descripcion breve del juego: 
 El juego trata de conquistar todo el continente de Feronis, derrotando a distintas facciones y consiguiendo mejoras a lo largo del juego.
