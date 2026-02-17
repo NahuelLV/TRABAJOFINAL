@@ -10,8 +10,6 @@ En proceso de la primera etapa(planificacion, creacion de los primeros archivos 
 
 -Nahuel Linares
 
--Matias Leanza
-
 ## Descripcion breve del juego: 
 El juego trata de conquistar todo el continente de Feronis, derrotando a distintas facciones y consiguiendo mejoras a lo largo del juego.
 
