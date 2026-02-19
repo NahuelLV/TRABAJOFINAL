@@ -1,21 +1,24 @@
 package pro.juego.Ironfall.pantallas;
 
-import com.badlogic.gdx.*;
+import com.badlogic.gdx.Gdx;
+import com.badlogic.gdx.Screen;
 import com.badlogic.gdx.graphics.GL20;
-import com.badlogic.gdx.scenes.scene2d.*;
-import com.badlogic.gdx.scenes.scene2d.ui.*;
-import com.badlogic.gdx.utils.viewport.ScreenViewport;
+
+import java.net.InetAddress;
 
 import pro.juego.Ironfall.IronfallJuego;
+import pro.juego.Ironfall.enums.TipoUnidad;
 import pro.juego.Ironfall.network.ClienteOnline;
-import pro.juego.Ironfall.enums.ModoJuego;
 
 public class PantallaBuscandoOnline implements Screen {
 
-    private IronfallJuego game;
-    private Stage stage;
-    private Skin skin;
+    private final IronfallJuego game;
+
+    private volatile boolean buscando = true;
+    private volatile boolean yaCambiePantalla = false;
+
     private ClienteOnline cliente;
+    private int equipo = -1;
 
     public PantallaBuscandoOnline(IronfallJuego game) {
         this.game = game;
@@ -23,46 +26,91 @@ public class PantallaBuscandoOnline implements Screen {
 
     @Override
     public void show() {
+        System.out.println("[UI] Entré a PantallaBuscandoOnline");
 
-        stage = new Stage(new ScreenViewport());
-        Gdx.input.setInputProcessor(stage);
-        skin = new Skin(Gdx.files.internal("ui/uiskin.json"));
+        Thread t = new Thread(() -> {
+            try {
+                cliente = new ClienteOnline(new ClienteOnline.Listener() {
 
-        Label label = new Label("BUSCANDO PARTIDA...", skin);
-        label.setFontScale(1.5f);
-        label.setPosition(
-                Gdx.graphics.getWidth() / 2f - 150,
-                Gdx.graphics.getHeight() / 2f
-        );
+                    @Override
+                    public void onEquipoAsignado(int eq) {
+                        equipo = eq;
+                        System.out.println("[UI] Me asignaron equipo " + eq);
+                    }
 
-        stage.addActor(label);
+                    @Override
+                    public void onStart() {
+                        System.out.println("[UI] START recibido, entrando a juego online");
 
-        cliente = new ClienteOnline();
+                        if (!buscando || yaCambiePantalla) return;
+                        yaCambiePantalla = true;
 
-        new Thread(() -> {
-            if (cliente.buscarServidor()) {
+                        // ✅ SIEMPRE cambiar pantallas desde el hilo de LibGDX:
+                        Gdx.app.postRunnable(() -> {
+                            if (!buscando) return;
+                            game.setScreen(new PantallaJuegoOnline(game, cliente, equipo));
+                        });
+                    }
 
-                Gdx.app.postRunnable(() ->
-                        game.setScreen(
-                                new PantallaJuego(game, ModoJuego.ONLINE)
-                        )
-                );
+                    @Override
+                    public void onEsperando() {
+                        System.out.println("[UI] Esperando rival...");
+                    }
+
+                    @Override
+                    public void onRivalSpawn(TipoUnidad tipo) {
+                        System.out.println("[UI] Rival spawneó " + tipo);
+                    }
+
+                    @Override
+                    public void onError(String msg) {
+                        System.out.println("[UI] Error: " + msg);
+                    }
+                });
+
+                InetAddress ip = cliente.buscarServidor();
+                if (!buscando) return;
+
+                if (ip == null) {
+                    System.out.println("[UI] No se encontró servidor.");
+                    return;
+                }
+
+                System.out.println("[UI] Servidor encontrado en " + ip.getHostAddress());
+                cliente.conectarA(ip);
+
+            } catch (Exception e) {
+                e.printStackTrace();
             }
-        }).start();
+        }, "BuscarYConectarThread");
+
+        t.setDaemon(true);
+        t.start();
     }
 
     @Override
     public void render(float delta) {
-        Gdx.gl.glClearColor(0, 0, 0.2f, 1);
+        Gdx.gl.glClearColor(0.1f, 0.1f, 0.1f, 1);
         Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
-
-        stage.act(delta);
-        stage.draw();
     }
 
-    @Override public void resize(int width, int height) { stage.getViewport().update(width, height); }
+    @Override public void resize(int width, int height) {}
     @Override public void pause() {}
     @Override public void resume() {}
-    @Override public void hide() {}
-    @Override public void dispose() { stage.dispose(); skin.dispose(); }
+
+    @Override
+    public void hide() {
+        buscando = false;
+        System.out.println("[UI] Salí de PantallaBuscandoOnline");
+
+        // OJO: si pasamos a PantallaJuegoOnline, NO cierres el cliente acá.
+        // PantallaJuegoOnline lo va a cerrar cuando se salga del modo online.
+        if (!yaCambiePantalla && cliente != null) cliente.cerrar();
+    }
+
+    @Override
+    public void dispose() {
+        buscando = false;
+        if (!yaCambiePantalla && cliente != null) cliente.cerrar();
+    }
 }
