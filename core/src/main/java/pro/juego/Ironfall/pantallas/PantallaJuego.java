@@ -124,6 +124,10 @@ public class PantallaJuego implements Screen {
 
         Gdx.gl.glClearColor(0, 0, 0, 1);
         Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
+        // INPUT ONLINE
+        if (modo == ModoJuego.ONLINE) {
+            // Por ahora solo bloqueamos IA y segundo HUD
+        }
 
         // INPUT JUGADOR 2
         if (modo == ModoJuego.DOS_JUGADORES_LOCAL) {

@@ -81,8 +81,38 @@ public class MenuPrincipal implements Screen {
             }
         });
 
+
+
+        // =========================
+        // BOTÓN ONLINE
+        // =========================
+        TextButton btnOnline = new TextButton("ONLINE LAN", skin);
+        btnOnline.setSize(240, 60);
+        btnOnline.setPosition(
+                Gdx.graphics.getWidth() / 2f - 120,
+                Gdx.graphics.getHeight() / 2f - 120
+        );
+
+        btnOnline.addListener(new ClickListener() {
+            @Override
+            public void clicked(InputEvent event, float x, float y) {
+
+                if (cambiandoPantalla) return;
+                cambiandoPantalla = true;
+
+                Gdx.input.setInputProcessor(null);
+
+                game.setScreen(new PantallaBuscandoOnline(game));
+            }
+        });
+
+        stage.addActor(btnOnline);
         stage.addActor(btn1Jugador);
         stage.addActor(btn2Jugadores);
+
+
+
+
     }
 
     @Override
