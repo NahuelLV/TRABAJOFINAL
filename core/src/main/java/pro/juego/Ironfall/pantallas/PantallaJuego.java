@@ -5,6 +5,7 @@ import com.badlogic.gdx.Input;
 import com.badlogic.gdx.Screen;
 import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.OrthographicCamera;
+import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.utils.viewport.FitViewport;
@@ -49,6 +50,8 @@ public class PantallaJuego implements Screen {
     private ModoJuego modo;
     private IAEnemiga iaEnemiga;
 
+    private Texture fondo; // 🔥 NUEVO
+
     float yEstatua = 220f;
 
     public PantallaJuego(IronfallJuego game, ModoJuego modo) {
@@ -67,6 +70,9 @@ public class PantallaJuego implements Screen {
 
         camara.position.set(400, 300, 0);
         camara.update();
+
+        // 🔥 CARGAMOS FONDO
+        fondo = new Texture("ui/fondo.png");
 
         unidadesJugador = new Array<>();
         unidadesEnemigas = new Array<>();
@@ -148,7 +154,7 @@ public class PantallaJuego implements Screen {
         nueva = estatuaEnemiga.updateProduccion(delta);
         if (nueva != null) unidadesEnemigas.add(nueva);
 
-        // UPDATE UNIDADES (SIN FOR-EACH)
+        // UPDATE UNIDADES
         for (int i = 0; i < unidadesJugador.size; i++) {
             Unidad u = unidadesJugador.get(i);
             u.update(delta, unidadesEnemigas, unidadesJugador, estatuaEnemiga);
@@ -182,6 +188,12 @@ public class PantallaJuego implements Screen {
             if (!unidadesEnemigas.get(i).estaViva())
                 unidadesEnemigas.removeIndex(i);
         }
+
+        // 🔥 RENDER FONDO (NO USA CAMARA)
+        batch.setProjectionMatrix(viewport.getCamera().combined);
+        batch.begin();
+        batch.draw(fondo, 0, 0, ANCHO_MUNDO, ALTO_MUNDO);
+        batch.end();
 
         // RENDER MUNDO
         updateCamara(delta);
@@ -242,5 +254,6 @@ public class PantallaJuego implements Screen {
         if (hudJugador2 != null)
             hudJugador2.dispose();
         shapeRenderer.dispose();
+        fondo.dispose(); // 🔥 liberar memoria
     }
 }
