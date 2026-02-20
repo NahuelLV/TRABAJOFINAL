@@ -86,7 +86,7 @@ public class PantallaJuegoOnline implements Screen {
         unidadesEquipo0 = new Array<>();
         unidadesEquipo1 = new Array<>();
 
-        float yEstatua = 220f;
+        float yEstatua = 75f;
         estatua0 = new Estatua(150f, yEstatua, 0);
         estatua1 = new Estatua(2850f, yEstatua, 1);
 

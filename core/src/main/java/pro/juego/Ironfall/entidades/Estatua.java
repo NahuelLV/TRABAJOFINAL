@@ -208,7 +208,17 @@ public class Estatua {
     // =========================
     public void render(SpriteBatch batch) {
         if (!viva) return;
-        batch.draw(textura, posicion.x, posicion.y, ancho, alto);
+
+        if (equipo == 1) {
+            // Equipo 1 (derecha): espejar para que mire a la izquierda
+            batch.draw(textura,
+                    posicion.x + ancho, posicion.y,  // corregimos el origen
+                    -ancho, alto                      // ancho negativo = flip
+            );
+        } else {
+            // Equipo 0 (izquierda): normal (mira a la derecha)
+            batch.draw(textura, posicion.x, posicion.y, ancho, alto);
+        }
     }
 
     // ✅ ONLINE: cuando llega SPAWN_OK del server (NO se cobra oro acá)
