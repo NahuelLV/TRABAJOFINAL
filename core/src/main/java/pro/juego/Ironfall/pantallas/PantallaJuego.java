@@ -52,7 +52,7 @@ public class PantallaJuego implements Screen {
 
     private Texture fondo; // 🔥 NUEVO
 
-    float yEstatua = 220f;
+    float yEstatua = 75f;
 
     public PantallaJuego(IronfallJuego game, ModoJuego modo) {
         this.game = game;
@@ -94,8 +94,7 @@ public class PantallaJuego implements Screen {
         multiplexer.addProcessor(hudJugador1.getStage());
         Gdx.input.setInputProcessor(multiplexer);
 
-        unidadesJugador.add(new Espadachin(120f, 1, 0));
-        unidadesEnemigas.add(new Espadachin(2830f, 1, 1));
+
     }
 
     private void updateCamara(float delta) {

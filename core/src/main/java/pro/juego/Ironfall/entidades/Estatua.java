@@ -174,12 +174,6 @@ public class Estatua {
         float spawnX = baseX;
         float spawnY = posicion.y;
 
-        // ✅ Si está habilitado (offline), agregamos variación.
-        // En ONLINE lo apagás para que ambos clientes spawneen EXACTAMENTE igual.
-        if (spawnAleatorio) {
-            spawnX = baseX + MathUtils.random(-10f, 10f);
-            spawnY = posicion.y + MathUtils.random(-25f, 25f);
-        }
 
         Unidad nueva = CreacionUnidades.crearUnidad(
                 produciendo,
