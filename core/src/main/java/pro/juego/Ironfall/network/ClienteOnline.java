@@ -6,6 +6,7 @@ import java.io.IOException;
 import java.net.*;
 import java.util.Enumeration;
 import java.util.function.BiConsumer;
+import java.util.function.IntConsumer;
 
 public class ClienteOnline extends Thread {
 
@@ -13,7 +14,7 @@ public class ClienteOnline extends Thread {
         void onEquipoAsignado(int equipo);
         void onStart();
         void onEsperando();
-        void onRivalSpawn(TipoUnidad tipo); // compat/log viejo
+        void onRivalSpawn(TipoUnidad tipo);
         void onError(String msg);
     }
 
@@ -23,14 +24,18 @@ public class ClienteOnline extends Thread {
     private InetAddress ipServer;
     private int puertoServer = PORT;
 
-    // (debug / info)
     private volatile int equipoAsignado = -1;
 
-    // ✅ Hook nuevo: spawn con equipo (0/1) + tipo
     private volatile BiConsumer<Integer, TipoUnidad> spawnHook = null;
+    private volatile BiConsumer<Integer, Integer> oroHook = null;
+    private volatile IntConsumer gameOverHook = null;
 
     private final Listener listener;
     private volatile boolean fin = false;
+
+    // ✅ heartbeat
+    private long lastPingMs = 0;
+    private static final long PING_INTERVAL_MS = 1000;
 
     public ClienteOnline(Listener listener) {
         this.listener = listener;
@@ -79,9 +84,7 @@ public class ClienteOnline extends Thread {
                     s.receive(resp);
                     String msg = new String(resp.getData(), 0, resp.getLength()).trim();
                     System.out.println("[CLIENTE] Recibí '" + msg + "' desde " + resp.getAddress().getHostAddress() + ":" + resp.getPort());
-
                     if (msg.equals("ENCONTRAR")) return resp.getAddress();
-
                 } catch (SocketTimeoutException ignored) {}
             }
 
@@ -98,12 +101,13 @@ public class ClienteOnline extends Thread {
         this.ipServer = serverIp;
 
         this.socket = new DatagramSocket(); // puerto random local
-        this.socket.setSoTimeout(1000);
+        this.socket.setSoTimeout(250);      // ✅ más corto, para que el loop haga heartbeat fluido
         this.socket.setBroadcast(true);
 
         System.out.println("[CLIENTE] Conectando a " + ipServer.getHostAddress() + ":" + puertoServer);
-        enviar("Conectar"); // OJO: que el server espere exactamente "Conectar"
+        enviar("Conectar");
 
+        lastPingMs = System.currentTimeMillis();
         start();
     }
 
@@ -112,6 +116,13 @@ public class ClienteOnline extends Thread {
         while (!fin) {
             try {
                 if (socket == null || socket.isClosed()) break;
+
+                // ✅ heartbeat: manda PING cada 1s aunque no haya tráfico
+                long now = System.currentTimeMillis();
+                if (now - lastPingMs >= PING_INTERVAL_MS) {
+                    enviar("PING");
+                    lastPingMs = now;
+                }
 
                 byte[] buf = new byte[1024];
                 DatagramPacket dp = new DatagramPacket(buf, buf.length);
@@ -137,17 +148,22 @@ public class ClienteOnline extends Thread {
                     continue;
                 }
 
-                // ✅ Nuevo: server manda spawn a ambos
-                // Formato esperado: SPAWN_OK:<equipo>:<tipo>
-                // Ej: SPAWN_OK:0:ESPADACHIN
-                if (msg.startsWith("SPAWN_OK:")) {
-                    String rest = msg.substring("SPAWN_OK:".length()).trim(); // "0:ESPADACHIN"
-                    String[] parts = rest.split(":");
+                if (msg.startsWith("GAME_OVER:")) {
+                    try {
+                        int ganador = Integer.parseInt(msg.substring("GAME_OVER:".length()).trim());
+                        if (gameOverHook != null) gameOverHook.accept(ganador);
+                    } catch (Exception e) {
+                        if (listener != null) listener.onError("GAME_OVER malformado: " + msg);
+                    }
+                    continue;
+                }
 
+                if (msg.startsWith("SPAWN_OK:")) {
+                    String rest = msg.substring("SPAWN_OK:".length()).trim();
+                    String[] parts = rest.split(":");
                     if (parts.length >= 2) {
                         int eq = Integer.parseInt(parts[0].trim());
                         TipoUnidad tipo = TipoUnidad.valueOf(parts[1].trim());
-
                         if (spawnHook != null) spawnHook.accept(eq, tipo);
                     } else {
                         if (listener != null) listener.onError("SPAWN_OK malformado: " + msg);
@@ -155,16 +171,12 @@ public class ClienteOnline extends Thread {
                     continue;
                 }
 
-                // ✅ Nuevo: server rechaza spawn
-                // Formato: SPAWN_FAIL:<motivo>
                 if (msg.startsWith("SPAWN_FAIL")) {
                     if (listener != null) listener.onError(msg);
                     continue;
                 }
 
                 if (msg.startsWith("ORO:")) {
-                    // Formato: ORO:<equipo>:<oro>
-                    // Ej: ORO:0:500
                     String[] parts = msg.split(":");
                     if (parts.length >= 3) {
                         int eq = Integer.parseInt(parts[1].trim());
@@ -176,7 +188,6 @@ public class ClienteOnline extends Thread {
                     continue;
                 }
 
-                // Compat: protocolo viejo
                 if (msg.startsWith("RIVAL_SPAWN:")) {
                     String t = msg.substring("RIVAL_SPAWN:".length()).trim();
                     try {
@@ -191,7 +202,7 @@ public class ClienteOnline extends Thread {
                 }
 
             } catch (SocketTimeoutException ignored) {
-                // normal
+                // normal: se usa para poder hacer heartbeat
             } catch (IOException e) {
                 if (fin) break;
                 e.printStackTrace();
@@ -209,25 +220,20 @@ public class ClienteOnline extends Thread {
             byte[] data = msg.getBytes();
             DatagramPacket out = new DatagramPacket(data, data.length, ipServer, puertoServer);
             socket.send(out);
-            System.out.println("[CLIENTE] -> " + msg);
+            // System.out.println("[CLIENTE] -> " + msg);
         } catch (IOException e) {
             e.printStackTrace();
         }
     }
 
     public void cerrar() {
+        try { enviar("DISCONNECT"); } catch (Exception ignored) {}
         fin = true;
         if (socket != null && !socket.isClosed()) socket.close();
         interrupt();
     }
 
-    private volatile java.util.function.BiConsumer<Integer, Integer> oroHook = null;
-
-    public void setOroHook(java.util.function.BiConsumer<Integer, Integer> hook) {
-        this.oroHook = hook;
-    }
-
-    public void setSpawnHook(BiConsumer<Integer, TipoUnidad> hook) {
-        this.spawnHook = hook;
-    }
+    public void setOroHook(BiConsumer<Integer, Integer> hook) { this.oroHook = hook; }
+    public void setSpawnHook(BiConsumer<Integer, TipoUnidad> hook) { this.spawnHook = hook; }
+    public void setGameOverHook(IntConsumer hook) { this.gameOverHook = hook; }
 }

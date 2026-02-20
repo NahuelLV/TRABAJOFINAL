@@ -59,6 +59,9 @@ public class PantallaJuegoOnline implements Screen {
     }
     private final ConcurrentLinkedQueue<SpawnEvt> spawnsPendientes = new ConcurrentLinkedQueue<>();
 
+    // ✅ ganador pendiente (lo setea el hook)
+    private volatile Integer ganadorPendiente = null;
+
     public PantallaJuegoOnline(IronfallJuego game, ClienteOnline cliente, int equipoLocal) {
         this.game = game;
         this.batch = game.batch;
@@ -87,11 +90,11 @@ public class PantallaJuegoOnline implements Screen {
         estatua0 = new Estatua(150f, yEstatua, 0);
         estatua1 = new Estatua(2850f, yEstatua, 1);
 
-        // ✅ ONLINE: el oro lo manda el server (no se genera local)
+        // ONLINE: oro lo manda server
         estatua0.setGenerarOroHabilitado(false);
         estatua1.setGenerarOroHabilitado(false);
 
-        // ✅ ONLINE: spawn determinístico (sin random) para que ambos clientes simulen igual
+        // ONLINE: spawn determinístico (si lo tenés implementado)
         estatua0.setSpawnAleatorio(false);
         estatua1.setSpawnAleatorio(false);
 
@@ -101,21 +104,29 @@ public class PantallaJuegoOnline implements Screen {
         hudLocal = new HudOnline(
                 estatuaLocal,
                 equipoLocal == 1,
-                tipo -> cliente.enviarSpawn(tipo) // SOLO manda al server
+                tipo -> cliente.enviarSpawn(tipo)
         );
 
         hudRemotoVisual = new HudJuego(estatuaRival, false, equipoLocal == 0);
 
-        // ✅ Spawn server -> ambos
+        // Spawn server -> ambos
         cliente.setSpawnHook((eq, tipo) -> Gdx.app.postRunnable(() -> {
             spawnsPendientes.add(new SpawnEvt(eq, tipo));
             System.out.println("[ONLINE] Spawn recibido: eq=" + eq + " tipo=" + tipo);
         }));
 
-        // ✅ Oro server -> ambos
+        // Oro server -> ambos
         cliente.setOroHook((eq, oro) -> Gdx.app.postRunnable(() -> {
             if (eq == 0) estatua0.setOro(oro);
             else estatua1.setOro(oro);
+        }));
+
+        // ✅ FIN PARTIDA (server manda ganador)
+        cliente.setGameOverHook(ganador -> Gdx.app.postRunnable(() -> {
+            if (ganadorPendiente == null) {
+                ganadorPendiente = ganador;
+                System.out.println("[ONLINE] GAME_OVER recibido. Ganador=" + ganador);
+            }
         }));
 
         InputMultiplexer mux = new InputMultiplexer();
@@ -144,15 +155,24 @@ public class PantallaJuegoOnline implements Screen {
     @Override
     public void render(float delta) {
 
-        // ✅ 1) aplicar spawns confirmados por server (NO cobrar oro)
+        // ✅ si ya terminó, cambiamos pantalla y listo (no más sim)
+        if (ganadorPendiente != null) {
+            int ganador = ganadorPendiente;
+            ganadorPendiente = null;
+
+            if (ganador == equipoLocal) game.setScreen(new PantallaVictoria(game));
+            else game.setScreen(new PantallaDerrota(game));
+            return;
+        }
+
+        // 1) aplicar spawns confirmados por server (NO cobrar oro)
         SpawnEvt evt;
         while ((evt = spawnsPendientes.poll()) != null) {
             Estatua est = (evt.equipo == 0) ? estatua0 : estatua1;
             est.encolarProduccionSinCosto(evt.tipo);
-            System.out.println("[ONLINE] Aplicado spawn eq=" + evt.equipo + " tipo=" + evt.tipo + " (sin cobrar)");
         }
 
-        // ✅ 2) sim local igual en ambos
+        // 2) sim local
         estatua0.update(delta, unidadesEquipo1);
         estatua1.update(delta, unidadesEquipo0);
 
@@ -176,7 +196,7 @@ public class PantallaJuegoOnline implements Screen {
         for (int i = unidadesEquipo1.size - 1; i >= 0; i--)
             if (!unidadesEquipo1.get(i).estaViva()) unidadesEquipo1.removeIndex(i);
 
-        // ✅ 3) render
+        // 3) render
         Gdx.gl.glClearColor(0, 0, 0, 1);
         Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
 
@@ -206,9 +226,6 @@ public class PantallaJuegoOnline implements Screen {
 
         hudRemotoVisual.update(delta);
         hudRemotoVisual.render();
-
-        if (!estatua1.estaViva()) game.setScreen(new PantallaVictoria(game));
-        if (!estatua0.estaViva()) game.setScreen(new PantallaDerrota(game));
     }
 
     @Override
