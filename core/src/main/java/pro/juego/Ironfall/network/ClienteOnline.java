@@ -5,6 +5,7 @@ import pro.juego.Ironfall.enums.TipoUnidad;
 import java.io.IOException;
 import java.net.*;
 import java.util.Enumeration;
+import java.util.function.BiConsumer;
 
 public class ClienteOnline extends Thread {
 
@@ -12,7 +13,7 @@ public class ClienteOnline extends Thread {
         void onEquipoAsignado(int equipo);
         void onStart();
         void onEsperando();
-        void onRivalSpawn(TipoUnidad tipo);
+        void onRivalSpawn(TipoUnidad tipo); // compat/log viejo
         void onError(String msg);
     }
 
@@ -22,14 +23,23 @@ public class ClienteOnline extends Thread {
     private InetAddress ipServer;
     private int puertoServer = PORT;
 
-    private volatile java.util.function.Consumer<TipoUnidad> rivalSpawnHook = null;
+    // (debug / info)
+    private volatile int equipoAsignado = -1;
+
+    // ✅ Hook nuevo: spawn con equipo (0/1) + tipo
+    private volatile BiConsumer<Integer, TipoUnidad> spawnHook = null;
 
     private final Listener listener;
     private volatile boolean fin = false;
 
     public ClienteOnline(Listener listener) {
         this.listener = listener;
+        setName("ClienteOnlineThread");
         setDaemon(true);
+    }
+
+    public int getEquipoAsignado() {
+        return equipoAsignado;
     }
 
     public InetAddress buscarServidor() {
@@ -49,6 +59,7 @@ public class ClienteOnline extends Thread {
                 for (InterfaceAddress ia : ni.getInterfaceAddresses()) {
                     InetAddress bcast = ia.getBroadcast();
                     if (bcast == null) continue;
+
                     DatagramPacket p = new DatagramPacket(data, data.length, bcast, PORT);
                     s.send(p);
                     System.out.println("[CLIENTE] Envié BUSCAR a " + bcast.getHostAddress() + ":" + PORT + " (iface " + ni.getName() + ")");
@@ -68,7 +79,9 @@ public class ClienteOnline extends Thread {
                     s.receive(resp);
                     String msg = new String(resp.getData(), 0, resp.getLength()).trim();
                     System.out.println("[CLIENTE] Recibí '" + msg + "' desde " + resp.getAddress().getHostAddress() + ":" + resp.getPort());
+
                     if (msg.equals("ENCONTRAR")) return resp.getAddress();
+
                 } catch (SocketTimeoutException ignored) {}
             }
 
@@ -83,20 +96,23 @@ public class ClienteOnline extends Thread {
 
     public void conectarA(InetAddress serverIp) throws SocketException {
         this.ipServer = serverIp;
-        this.socket = new DatagramSocket(); // puerto random
+
+        this.socket = new DatagramSocket(); // puerto random local
         this.socket.setSoTimeout(1000);
         this.socket.setBroadcast(true);
 
         System.out.println("[CLIENTE] Conectando a " + ipServer.getHostAddress() + ":" + puertoServer);
-        enviar("Conectar");
+        enviar("Conectar"); // OJO: que el server espere exactamente "Conectar"
 
-        start(); // empieza a escuchar
+        start();
     }
 
     @Override
     public void run() {
         while (!fin) {
             try {
+                if (socket == null || socket.isClosed()) break;
+
                 byte[] buf = new byte[1024];
                 DatagramPacket dp = new DatagramPacket(buf, buf.length);
                 socket.receive(dp);
@@ -106,6 +122,7 @@ public class ClienteOnline extends Thread {
 
                 if (msg.startsWith("EQUIPO:")) {
                     int eq = Integer.parseInt(msg.substring("EQUIPO:".length()).trim());
+                    equipoAsignado = eq;
                     if (listener != null) listener.onEquipoAsignado(eq);
                     continue;
                 }
@@ -120,16 +137,51 @@ public class ClienteOnline extends Thread {
                     continue;
                 }
 
+                // ✅ Nuevo: server manda spawn a ambos
+                // Formato esperado: SPAWN_OK:<equipo>:<tipo>
+                // Ej: SPAWN_OK:0:ESPADACHIN
+                if (msg.startsWith("SPAWN_OK:")) {
+                    String rest = msg.substring("SPAWN_OK:".length()).trim(); // "0:ESPADACHIN"
+                    String[] parts = rest.split(":");
+
+                    if (parts.length >= 2) {
+                        int eq = Integer.parseInt(parts[0].trim());
+                        TipoUnidad tipo = TipoUnidad.valueOf(parts[1].trim());
+
+                        if (spawnHook != null) spawnHook.accept(eq, tipo);
+                    } else {
+                        if (listener != null) listener.onError("SPAWN_OK malformado: " + msg);
+                    }
+                    continue;
+                }
+
+                // ✅ Nuevo: server rechaza spawn
+                // Formato: SPAWN_FAIL:<motivo>
+                if (msg.startsWith("SPAWN_FAIL")) {
+                    if (listener != null) listener.onError(msg);
+                    continue;
+                }
+
+                if (msg.startsWith("ORO:")) {
+                    // Formato: ORO:<equipo>:<oro>
+                    // Ej: ORO:0:500
+                    String[] parts = msg.split(":");
+                    if (parts.length >= 3) {
+                        int eq = Integer.parseInt(parts[1].trim());
+                        int oro = Integer.parseInt(parts[2].trim());
+                        if (oroHook != null) oroHook.accept(eq, oro);
+                    } else {
+                        if (listener != null) listener.onError("ORO malformado: " + msg);
+                    }
+                    continue;
+                }
+
+                // Compat: protocolo viejo
                 if (msg.startsWith("RIVAL_SPAWN:")) {
                     String t = msg.substring("RIVAL_SPAWN:".length()).trim();
                     try {
                         TipoUnidad tipo = TipoUnidad.valueOf(t);
-
                         if (listener != null) listener.onRivalSpawn(tipo);
-
-                        // ✅ Hook extra (para que la pantalla de juego lo aplique)
-                        if (rivalSpawnHook != null) rivalSpawnHook.accept(tipo);
-
                     } catch (Exception ignored) {}
                     continue;
                 }
@@ -141,7 +193,8 @@ public class ClienteOnline extends Thread {
             } catch (SocketTimeoutException ignored) {
                 // normal
             } catch (IOException e) {
-                if (!fin) e.printStackTrace();
+                if (fin) break;
+                e.printStackTrace();
             }
         }
     }
@@ -164,11 +217,17 @@ public class ClienteOnline extends Thread {
 
     public void cerrar() {
         fin = true;
-        if (socket != null) socket.close();
+        if (socket != null && !socket.isClosed()) socket.close();
         interrupt();
     }
 
-    public void setRivalSpawnHook(java.util.function.Consumer<TipoUnidad> hook) {
-        this.rivalSpawnHook = hook;
+    private volatile java.util.function.BiConsumer<Integer, Integer> oroHook = null;
+
+    public void setOroHook(java.util.function.BiConsumer<Integer, Integer> hook) {
+        this.oroHook = hook;
+    }
+
+    public void setSpawnHook(BiConsumer<Integer, TipoUnidad> hook) {
+        this.spawnHook = hook;
     }
 }

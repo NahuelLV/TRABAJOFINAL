@@ -15,23 +15,23 @@ public class Estatua {
     // POSICIÓN / RENDER
     // =========================
     private static Texture textura;
-    private Vector2 posicion;
-    private float ancho = 64f;
-    private float alto = 128f;
+    private final Vector2 posicion;
+    private final float ancho = 64f;
+    private final float alto = 128f;
 
     // =========================
     // COMBATE
     // =========================
-    private float vidaMax = 500f;
+    private final float vidaMax = 500f;
     private float vida = vidaMax;
     private boolean viva = true;
 
-    private float danio = 30f;
-    private float rangoAtaque = 250f;
-    private float tiempoEntreAtaques = 1.2f;
+    private final float danio = 30f;
+    private final float rangoAtaque = 250f;
+    private final float tiempoEntreAtaques = 1.2f;
     private float tiempoDesdeUltimoAtaque = 0f;
 
-    private int equipo;
+    private final int equipo;
 
     // =========================
     // ORO
@@ -41,15 +41,18 @@ public class Estatua {
     private static final float INTERVALO_ORO = 30f;
     private static final int ORO_POR_TICK = 500;
 
+    // ✅ ONLINE: si es false, NO generamos oro localmente (lo manda el server)
+    private boolean generarOroHabilitado = true;
+
+    // ✅ ONLINE: si es false, NO usamos random en spawn (para evitar desync)
+    private boolean spawnAleatorio = true;
+
     // =========================
     // PRODUCCIÓN
     // =========================
-    private Array<TipoUnidad> colaProduccion = new Array<>();
+    private final Array<TipoUnidad> colaProduccion = new Array<>();
     private TipoUnidad produciendo = null;
     private float progresoProduccion = 0f;
-
-
-    private static final float[] CARRILES_Y = {160f, 220f, 280f};
 
     // =========================
     // CONSTRUCTOR
@@ -64,12 +67,24 @@ public class Estatua {
     }
 
     // =========================
+    // SETTERS ONLINE
+    // =========================
+    public void setGenerarOroHabilitado(boolean habilitado) {
+        this.generarOroHabilitado = habilitado;
+    }
+
+    public void setSpawnAleatorio(boolean spawnAleatorio) {
+        this.spawnAleatorio = spawnAleatorio;
+    }
+
+    // =========================
     // UPDATE GENERAL
     // =========================
     public void update(float delta, Array<Unidad> enemigos) {
         if (!viva) return;
 
-        generarOro(delta);
+        // ✅ En online, el oro lo maneja el server
+        if (generarOroHabilitado) generarOro(delta);
 
         tiempoDesdeUltimoAtaque += delta;
         atacarEnemigos(enemigos);
@@ -88,7 +103,7 @@ public class Estatua {
             if (distancia <= rangoAtaque) {
                 u.recibirDanio(danio);
                 tiempoDesdeUltimoAtaque = 0f;
-                return; // ataca solo a una
+                return;
             }
         }
     }
@@ -104,6 +119,8 @@ public class Estatua {
         }
     }
 
+    // ⚠️ OJO: en ONLINE NO deberías llamarlo desde UI.
+    // En ONLINE se usa encolarProduccionSinCosto() cuando llega SPAWN_OK.
     public boolean intentarProducir(TipoUnidad tipo) {
         if (oro < tipo.getCosto()) return false;
         oro -= tipo.getCosto();
@@ -111,11 +128,9 @@ public class Estatua {
         return true;
     }
 
-    
     // =========================
     // BarraVida
     // =========================
-    
     public void renderBarraVida(ShapeRenderer sr) {
         if (!viva) return;
 
@@ -124,15 +139,12 @@ public class Estatua {
         float barraAncho = ancho;
         float barraAlto = 6f;
 
-        // 👉 CENTRADA sobre la estatua
         float x = posicion.x + (ancho - barraAncho) / 2f;
         float y = posicion.y + alto + 10f;
 
-        // Fondo
         sr.setColor(0.3f, 0f, 0f, 1f);
         sr.rect(x, y, barraAncho, barraAlto);
 
-        // Vida
         sr.setColor(0f, 1f, 0f, 1f);
         sr.rect(x, y, barraAncho * porcentaje, barraAlto);
     }
@@ -143,11 +155,7 @@ public class Estatua {
     public Unidad updateProduccion(float delta) {
 
         if (produciendo == null) {
-
-            if (colaProduccion.size == 0) {
-                return null;
-            }
-
+            if (colaProduccion.size == 0) return null;
             produciendo = colaProduccion.removeIndex(0);
             progresoProduccion = 0f;
         }
@@ -158,15 +166,20 @@ public class Estatua {
             return null;
         }
 
-        // =========================
-        // SPAWN CON VARIACIÓN
-        // =========================
+        // ✅ Spawn base (lado de la estatua según equipo)
         float baseX = (equipo == 0)
-                ? posicion.x + ancho + 10
-                : posicion.x - 40;
+                ? posicion.x + ancho + 10f
+                : posicion.x - 40f;
 
-        float spawnX = baseX + MathUtils.random(-10f, 10f);
-        float spawnY = posicion.y + MathUtils.random(-25f, 25f);
+        float spawnX = baseX;
+        float spawnY = posicion.y;
+
+        // ✅ Si está habilitado (offline), agregamos variación.
+        // En ONLINE lo apagás para que ambos clientes spawneen EXACTAMENTE igual.
+        if (spawnAleatorio) {
+            spawnX = baseX + MathUtils.random(-10f, 10f);
+            spawnY = posicion.y + MathUtils.random(-25f, 25f);
+        }
 
         Unidad nueva = CreacionUnidades.crearUnidad(
                 produciendo,
@@ -181,7 +194,6 @@ public class Estatua {
         return nueva;
     }
 
-
     // =========================
     // DAÑO
     // =========================
@@ -194,13 +206,8 @@ public class Estatua {
         }
     }
 
-    public boolean estaViva() {
-        return viva;
-    }
-
-    public float getX() {
-        return posicion.x;
-    }
+    public boolean estaViva() { return viva; }
+    public float getX() { return posicion.x; }
 
     // =========================
     // RENDER
@@ -209,37 +216,28 @@ public class Estatua {
         if (!viva) return;
         batch.draw(textura, posicion.x, posicion.y, ancho, alto);
     }
-   
-    
-    public int getOro() {
-        return oro;
+
+    // ✅ ONLINE: cuando llega SPAWN_OK del server (NO se cobra oro acá)
+    public void encolarProduccionSinCosto(TipoUnidad tipo) {
+        colaProduccion.add(tipo);
     }
 
-    public float getVida() {
-        return vida;
+    // ✅ ONLINE: el server manda el oro y acá lo aplicás
+    public void setOro(int oro) {
+        this.oro = Math.max(0, oro);
     }
 
-    public float getVidaMaxima() {
-        return vidaMax;
-    }
-    
-    public float getPorcentajeVida() {
-        return vida / vidaMax;
+    public void setVida(float vida) {
+        this.vida = Math.max(0, Math.min(vida, vidaMax));
+        this.viva = this.vida > 0;
     }
 
-    public int getEquipo() {
-        return equipo;
-    }
-    
-    public float getY() {
-        return posicion.y;
-    }
-
-    public float getAncho() {
-        return ancho;
-    }
-
-    public float getAlto() {
-        return alto;
-    }
+    public int getOro() { return oro; }
+    public float getVida() { return vida; }
+    public float getVidaMaxima() { return vidaMax; }
+    public float getPorcentajeVida() { return vida / vidaMax; }
+    public int getEquipo() { return equipo; }
+    public float getY() { return posicion.y; }
+    public float getAncho() { return ancho; }
+    public float getAlto() { return alto; }
 }
